@@ -1,0 +1,242 @@
+---
+title: "Day 11: Classification — In-Class Activity"
+subtitle: "Who is about to switch orange juice brands?"
+author: "Econ 122"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r packages, include=FALSE, eval=TRUE}
+mypacks <- c("ggplot2","dplyr","ISLR2")
+packs <- installed.packages()
+install.me <- mypacks[!(mypacks %in% packs[,"Package"])]
+if (length(install.me) >= 1) install.packages(install.me, repos = "http://cran.us.r-project.org")
+lapply(mypacks, library, character.only=TRUE)
+```
+
+## Introduction
+
+You're an analyst for **Citrus Hill** orange juice. Your main rival is
+**Minute Maid**. Marketing wants to mail a coupon to shoppers who are about to
+buy Minute Maid, to win them back. Your job: **predict which shoppers will buy
+Minute Maid.**
+
+The `OJ` data from ISLR2 has one row per orange juice purchase (1,070 in all).
+The variables you'll use:
+
+| Variable | Meaning |
+|---|---|
+| `Purchase` | the brand bought: `CH` (Citrus Hill) or `MM` (Minute Maid) |
+| `LoyalCH` | the customer's loyalty to Citrus Hill, from 0 to 1, based on past purchases. Near 1 = almost always buys Citrus Hill |
+
+Throughout, **positive = `MM`**: the shoppers we're trying to find.
+
+**Estimated time: 35 minutes.** The goal for today is **Parts 1–4**. If you
+finish them, keep going with the **Bonus** section at the end. If you don't
+reach the Bonus, that's completely fine.
+
+Each task ends with a question in *italics*. Write a sentence or two for each.
+
+```{r load}
+data(OJ)
+```
+
+---
+
+## Part 1: The Baseline (7 minutes)
+
+### Task 1.1: How common is each brand?
+
+Count how many purchases are `CH` and how many are `MM`, and the share of each.
+
+```{r task1_1}
+# Your code here
+
+```
+
+*Suppose you ignore the data and always predict the more common brand. What
+error rate does that baseline get? How many Minute Maid buyers does it find?*
+
+### Task 1.2: Is loyalty a useful predictor?
+
+Make a plot that compares `LoyalCH` for `CH` buyers and `MM` buyers (a boxplot
+works).
+
+```{r task1_2}
+# Your code here
+
+```
+
+*Do Minute Maid buyers tend to have high or low Citrus Hill loyalty? Is there
+much overlap?*
+
+---
+
+## Part 2: A Loyalty Rule (10 minutes)
+
+### Task 2.1: Make predictions
+
+Add a column `pred` to `OJ` that is `"MM"` when `LoyalCH < 0.5` and `"CH"`
+otherwise. (`ifelse()` works.) Then make the confusion matrix:
+
+```r
+table(Actual = OJ$Purchase, Predicted = OJ$pred)
+```
+
+and compute the error rate.
+
+```{r task2_1}
+# Your code here
+
+```
+
+*How many Minute Maid buyers did the rule catch, and how many did it miss? How
+does its error rate compare to the baseline's?*
+
+### Task 2.2: Recall, precision, specificity
+
+Compute the rule's **recall**, **precision**, and **specificity** (formulas on
+the slides). You can type the counts from your confusion matrix, or compute them
+with `sum()`. For example, the number of true positives is
+
+```r
+sum(OJ$pred == "MM" & OJ$Purchase == "MM")
+```
+
+```{r task2_2}
+# Your code here
+
+```
+
+*Explain each of the three numbers in a sentence a marketing manager would
+understand. Each coupon goes to a shopper the rule flags. Which rate tells the
+manager how many coupons are wasted?*
+
+---
+
+## Part 3: Choosing the Cutoff (10 minutes)
+
+### Task 3.1: Try other cutoffs
+
+This function returns the error rate, recall, and precision for any cutoff.
+Fill in the blanks (`___`), then remove the `#`s. The last three lines run it
+for cutoffs 0.3, 0.5, and 0.7.
+
+**Note:** here a shopper is flagged when `LoyalCH` is **below** the cutoff, so a
+**higher** cutoff flags **more** shoppers. (On the slides it was the reverse:
+customers were flagged when their balance was **above** the cutoff.)
+
+```{r task3_1}
+# oj_rates <- function(cutoff) {
+#   pred <- ifelse(OJ$LoyalCH < cutoff, "MM", "CH")
+#   tp <- sum(pred == "MM" & OJ$Purchase == "MM")
+#   fp <- ___
+#   fn <- ___
+#   tibble(cutoff    = cutoff,
+#          error     = mean(pred != OJ$Purchase),
+#          recall    = ___,
+#          precision = ___)
+# }
+#
+# oj_rates(0.3)
+# oj_rates(0.5)
+# oj_rates(0.7)
+```
+
+*Which cutoff has the lowest error rate? As the cutoff rises from 0.3 to 0.7,
+what happens to recall, and what happens to precision? Why do they move in
+opposite directions?*
+
+### Task 3.2: Pick a cutoff for the campaign
+
+*Coupons are cheap to print and mail, and every Minute Maid buyer you fail to
+reach is a lost sale. Which of the three cutoffs would you recommend, and which
+rate did you care most about? Would your answer change if each coupon were
+expensive?*
+
+---
+
+## Part 4: What Do the Coupons Earn? (8 minutes)
+
+### Task 4.1: Profit by cutoff
+
+Suppose each coupon costs \$0.25 to print and mail, and each Minute Maid buyer
+who gets one switches back and earns Citrus Hill \$1.00. (Shoppers who were
+going to buy Citrus Hill anyway earn nothing extra from a coupon.)
+
+Write the campaign's profit in terms of TP and FP. Then fill in the blank in
+this loop and remove the `#`s. It works like the loop on Day 9:
+
+* `results` starts as a table with one row per cutoff, from 0.1 to 0.9 (`NA`
+  means "not filled in yet").
+* Each pass of the loop scores one cutoff and fills in its row.
+
+```{r task4_1}
+# cutoffs <- seq(0.1, 0.9, 0.1)
+# results <- tibble(cutoff = cutoffs, error = NA, profit = NA)
+#
+# for (i in 1:length(cutoffs)) {
+#   pred <- ifelse(OJ$LoyalCH < cutoffs[i], "MM", "CH")
+#   tp <- sum(pred == "MM" & OJ$Purchase == "MM")
+#   fp <- sum(pred == "MM" & OJ$Purchase == "CH")
+#   results$error[i]  <- mean(pred != OJ$Purchase)
+#   results$profit[i] <- ___
+# }
+#
+# results
+```
+
+*Which cutoff earns the most? Is it the cutoff with the lowest error rate? Why
+not?*
+
+*The 0.5 rule in Part 2 was picked by eye. What are you optimizing when you
+choose the cutoff here, and how is that different?*
+
+---
+
+## Bonus (optional)
+
+Work on these if you finish the main questions.
+
+### Bonus 1: Where is Minute Maid more likely?
+
+How does the chance of buying Minute Maid change with loyalty? Group shoppers
+into `LoyalCH` bins of width 0.1 and compute the share who bought `MM` in each.
+(`cut(LoyalCH, breaks = seq(0, 1, 0.1), include.lowest = TRUE)` makes the bins.)
+
+```{r bonus1}
+# Your code here
+
+```
+
+*Around what `LoyalCH` does the share buying `MM` cross 50%? How does that
+compare to the cutoff with the lowest error rate in Task 3.1?*
+
+### Bonus 2: One score for both kinds of mistakes
+
+Copy your Part 4 loop and change it to compute **balanced accuracy** and **F1**
+(formulas on the slides) for each cutoff instead of profit. You'll need `fn` and
+`tn` too.
+
+```{r bonus2}
+# Your code here
+
+```
+
+*Which cutoff gives the highest balanced accuracy? The highest F1? Do they agree
+with the cutoff that has the lowest error rate? With the most profitable one?
+(Both are in your Part 4 table.)*
+
+*On the slides, F1 and the error rate picked **different** cutoffs for the
+`Default` data, where only 3% of customers default. Here 39% of shoppers buy
+Minute Maid. Why might the scores agree more often when the classes are less
+lopsided?*
+
+### Bonus 3: One question to think about
+
+Your Part 4 cutoff was chosen on the same 1,070 purchases you scored it on. Using
+Day 9, would you expect it to earn as much on **next month's** shoppers? Why or
+why not?
